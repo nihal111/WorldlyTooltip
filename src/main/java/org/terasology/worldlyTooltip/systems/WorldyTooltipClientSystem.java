@@ -27,7 +27,6 @@ import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.input.InputSystem;
 import org.terasology.input.Keyboard;
-import org.terasology.input.cameraTarget.CameraTargetChangedEvent;
 import org.terasology.input.cameraTarget.CameraTargetSystem;
 import org.terasology.input.device.KeyboardDevice;
 import org.terasology.logic.common.DisplayNameComponent;
@@ -36,7 +35,6 @@ import org.terasology.math.geom.Vector3i;
 import org.terasology.registry.In;
 import org.terasology.rendering.assets.mesh.Mesh;
 import org.terasology.rendering.assets.texture.Texture;
-import org.terasology.rendering.assets.texture.TextureRegion;
 import org.terasology.rendering.nui.NUIManager;
 import org.terasology.rendering.nui.layers.ingame.inventory.GetItemTooltip;
 import org.terasology.rendering.nui.skin.UISkin;
@@ -45,13 +43,10 @@ import org.terasology.rendering.nui.widgets.TooltipLineRenderer;
 import org.terasology.world.BlockEntityRegistry;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
-import org.terasology.world.block.BlockComponent;
 
 import java.util.List;
 
-import static org.terasology.worldlyTooltip.ui.WorldlyTooltip.icon;
-import static org.terasology.worldlyTooltip.ui.WorldlyTooltip.blockName;
-import static org.terasology.worldlyTooltip.ui.WorldlyTooltip.tooltip;
+import static org.terasology.worldlyTooltip.ui.WorldlyTooltip.*;
 
 @RegisterSystem(RegisterMode.CLIENT)
 public class WorldyTooltipClientSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
@@ -84,34 +79,40 @@ public class WorldyTooltipClientSystem extends BaseComponentSystem implements Up
     }
 
     @ReceiveEvent
+    public void getDisplayNameEntityTooltip(GetItemTooltip event, EntityRef entity, DisplayNameComponent displayNameComponent) {
+        event.getTooltipLines().add(new TooltipLine("Name: " + displayNameComponent.name));
+    }
+
+    @ReceiveEvent
     public void getDurabilityItemTooltip(GetItemTooltip event, EntityRef entity, HealthComponent healthComponent) {
         event.getTooltipLines().add(new TooltipLine("Health: " + healthComponent.currentHealth + "/" + healthComponent.maxHealth));
     }
 
     @Override
     public void update(float delta) {
-        if (cameraTargetSystem.isTargetAvailable()) {
-            EntityRef targetEntity = cameraTargetSystem.getTarget();
-            if (!targetEntity.hasComponent(BlockComponent.class)) {
-                logger.info(targetEntity.toFullDescription());
-            } else {
-                blockName.setText(getBlockName());
-                if (tooltip != null) {
-                    UISkin defaultSkin = assetManager.getAsset("core:itemTooltip", UISkin.class).get();
-                    tooltip.setItemRenderer(new TooltipLineRenderer(defaultSkin));
-                    tooltip.setSkin(defaultSkin);
-                    tooltip.setList(getToolTip());
-                }
-                if (icon != null) {
-                    icon.setMesh(getMesh());
-                    icon.setMeshTexture(assetManager.getAsset("engine:terrain", Texture.class).get());
-                }
-            }
+        blockName.setText(getBlockName());
+        if (tooltip != null) {
+            UISkin defaultSkin = assetManager.getAsset("core:itemTooltip", UISkin.class).get();
+            tooltip.setItemRenderer(new TooltipLineRenderer(defaultSkin));
+            tooltip.setSkin(defaultSkin);
+            tooltip.setList(getToolTip());
         }
+        if (icon != null) {
+            icon.setMesh(getMesh());
+            icon.setMeshTexture(assetManager.getAsset("engine:terrain", Texture.class).get());
+        }
+
+
     }
 
-    public String getBlockName(){
+    private String getBlockName() {
         if (cameraTargetSystem.isTargetAvailable()) {
+
+            if (!cameraTargetSystem.isBlock()) {
+                EntityRef targetEntity = cameraTargetSystem.getTarget();
+                return targetEntity.getParentPrefab().getName();
+            }
+
             Vector3i blockPosition = cameraTargetSystem.getTargetBlockPosition();
             Block block = worldProvider.getBlock(blockPosition);
             if (keyboard.isKeyDown(Keyboard.KeyId.LEFT_ALT) || keyboard.isKeyDown(Keyboard.KeyId.LEFT_ALT)) {
@@ -132,8 +133,8 @@ public class WorldyTooltipClientSystem extends BaseComponentSystem implements Up
 
     private List<TooltipLine> getToolTip() {
         if (cameraTargetSystem.isTargetAvailable()) {
-            EntityRef targetEntity = blockEntityRegistry.getEntityAt(cameraTargetSystem.getTargetBlockPosition());
 
+            EntityRef targetEntity = cameraTargetSystem.getTarget();
             GetItemTooltip itemTooltip = new GetItemTooltip();
             try {
                 targetEntity.send(itemTooltip);
@@ -147,6 +148,11 @@ public class WorldyTooltipClientSystem extends BaseComponentSystem implements Up
 
     private Mesh getMesh() {
         if (cameraTargetSystem.isTargetAvailable()) {
+
+            if (!cameraTargetSystem.isBlock()) {
+                return null;
+            }
+
             Vector3i blockPosition = cameraTargetSystem.getTargetBlockPosition();
             Block block = worldProvider.getBlock(blockPosition);
             if (block.getBlockFamily() != null) {
