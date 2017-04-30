@@ -45,6 +45,7 @@ import org.terasology.rendering.nui.widgets.TooltipLineRenderer;
 import org.terasology.world.BlockEntityRegistry;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
+import org.terasology.world.block.BlockComponent;
 
 import java.util.List;
 
@@ -87,25 +88,26 @@ public class WorldyTooltipClientSystem extends BaseComponentSystem implements Up
         event.getTooltipLines().add(new TooltipLine("Health: " + healthComponent.currentHealth + "/" + healthComponent.maxHealth));
     }
 
-    @ReceiveEvent
-    public void onCameraTargetChanged(CameraTargetChangedEvent event, EntityRef entity){
-//        blockName.setText(getBlockName());
-//        if (tooltip != null) {
-//            UISkin defaultSkin = assetManager.getAsset("core:itemTooltip", UISkin.class).get();
-//            tooltip.setItemRenderer(new TooltipLineRenderer(defaultSkin));
-//            tooltip.setSkin(defaultSkin);
-//            tooltip.setList(getToolTip());
-//        }
-//        if (icon != null) {
-//            icon.setMesh(getMesh());
-//            icon.setMeshTexture(assetManager.getAsset("engine:terrain", Texture.class).get());
-//        }
-    }
-
     @Override
     public void update(float delta) {
-//        logger.info(cameraTargetSystem.getTarget().toString());
-//        logger.info(cameraTargetSystem.getTarget().toFullDescription());
+        if (cameraTargetSystem.isTargetAvailable()) {
+            EntityRef targetEntity = cameraTargetSystem.getTarget();
+            if (!targetEntity.hasComponent(BlockComponent.class)) {
+                logger.info(targetEntity.toFullDescription());
+            } else {
+                blockName.setText(getBlockName());
+                if (tooltip != null) {
+                    UISkin defaultSkin = assetManager.getAsset("core:itemTooltip", UISkin.class).get();
+                    tooltip.setItemRenderer(new TooltipLineRenderer(defaultSkin));
+                    tooltip.setSkin(defaultSkin);
+                    tooltip.setList(getToolTip());
+                }
+                if (icon != null) {
+                    icon.setMesh(getMesh());
+                    icon.setMeshTexture(assetManager.getAsset("engine:terrain", Texture.class).get());
+                }
+            }
+        }
     }
 
     public String getBlockName(){
